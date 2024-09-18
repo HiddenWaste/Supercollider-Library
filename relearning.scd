@@ -357,6 +357,7 @@ SynthDef(\spaceTri,{
 (
 x = Synth(\spaceTri, [
     \freq, 500,   // Frequency in Hz
+	\rel, 2,
 ]);
 )
 
@@ -366,3 +367,4 @@ Synth(\spaceTri)
 s.reboot;
 s.plotTree;
 s.meter;
+s.boot;
