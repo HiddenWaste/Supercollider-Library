@@ -418,3 +418,38 @@ b = Routine {
 })
 
 ~playB.value;
+
+s.reboot;
+
+(
+SynthDef(\star, {
+	arg freq = 500, amp=0.7, out=0,                // Baseline Arguments
+	atk=0.3, rel=0.7, dec=1.2, sus=0.5, gate=1,
+	pha = 0.05;   // Envelope Arguments
+	var sig, env;                                  // Variables for signal and envelope
+
+	// Using Mix.new to make the signal a culmination of multiple different waves
+	sig = Mix.new([
+		Pulse.ar(freq, 0.8, 0.5),
+		FreeVerb.ar(Pulse.ar(freq/2), 0.7, 0.8, 0.5, 0.7),
+		LFTri.ar(freq, pha, 0.5),
+	]);
+
+	env = EnvGen.ar(Env.perc(atk, rel), gate, doneAction:2);
+
+	//High Pass Filter?
+	sig = LPF.ar(sig, freq + 100);
+	sig = HPF.ar(sig, freq - 150);
+
+	sig = sig + AllpassC.ar(sig, 0.2, del, dec)
+	sig = sig * env * amp;
+	sig = Limiter.ar(sig, 0.7);
+
+	Pan2.ar(sig, out);
+	Out.ar(out, sig);
+}).add;
+)
+
+Synth(\star)
+
+p = Pbind( \instrument, \star, \dur, 1, \freq, 500).play;

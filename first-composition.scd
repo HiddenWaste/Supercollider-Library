@@ -121,11 +121,17 @@ c = Routine {
 	8.wait;
 	4.do {
 		~playB.value;
-		4.wait;
+		6.wait;
 	};
 	8.wait;
 	~playB.value;
 	a.stop;
 })
 
-c.play;  // So far this is the composition!!!
+(
+~playC = {
+	c.reset;
+	c.play;
+})
+
+~playC.value;  // So far this is the composition!!!
