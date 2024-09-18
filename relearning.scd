@@ -425,7 +425,7 @@ s.reboot;
 SynthDef(\star, {
 	arg freq = 500, amp=0.7, out=0,                // Baseline Arguments
 	atk=0.3, rel=0.7, dec=1.2, sus=0.5, gate=1,
-	pha = 0.05;   // Envelope Arguments
+	pha = 0.05, del=0.6;   // Envelope Arguments
 	var sig, env;                                  // Variables for signal and envelope
 
 	// Using Mix.new to make the signal a culmination of multiple different waves
@@ -441,7 +441,7 @@ SynthDef(\star, {
 	sig = LPF.ar(sig, freq + 100);
 	sig = HPF.ar(sig, freq - 150);
 
-	sig = sig + AllpassC.ar(sig, 0.2, del, dec)
+	sig = sig + AllpassL.ar(sig, 0.2, del, dec);
 	sig = sig * env * amp;
 	sig = Limiter.ar(sig, 0.7);
 
@@ -453,3 +453,44 @@ SynthDef(\star, {
 Synth(\star)
 
 p = Pbind( \instrument, \star, \dur, 1, \freq, 500).play;
+
+(
+SynthDef.new(\kick, {
+	arg freqA=1000, freqB=50, freqC=1, freqDur1=0.01, freqDur2=0.2, freqC1=1, freqC2=(-1),
+	atk=0.01, rel=1, c1=1, c2=(-12), amp=0.8, pan=0, out=0;
+
+	var sig, env, freqSweep;
+
+	freqSweep = Env([freqA, freqB, freqC], [freqDur1, freqDur2], [freqC1, freqC2]).ar;
+
+	env = Env([0,1,0],[atk,rel],[c1,c2]).kr(2);
+
+	sig = SinOsc.ar(freqSweep, pi/2);
+	sig = sig * env;
+	sig = Pan2.ar(sig, pan, amp);
+	Out.ar(out, sig)
+}).add;
+)
+
+
+~myKick = Synth.new(\kick, [\freqA, 550, \atk, 0.01, \rel, 1, \amp, 1]);
+
+
+
+Pbind
+
+Pbindef
+
+(
+~myKick = Pbind(
+	\instrument, \kick,
+	\freqA, Prand([100, 500, 800, 1000], inf),
+	\atk, 0.01,
+	\rel, 1,
+	\amp, Pwhite(0.3, 0.7, inf),
+	\out, 0,
+).play;
+)
+
+~myKick.stop;
+~myKick.play;>
