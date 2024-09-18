@@ -1,7 +1,12 @@
-s.boot;
-s.reboot;
-s.meter;
-Server.killAll;
+(
+~boot = {
+	Server.killAll;
+	s.reboot;
+	s.plotTree;
+	s.meter;
+})
+
+~boot.value;
 
 // Actually trying to make a sort of supercollider piece!!
 // Its been a while and need to brush up on stuff
@@ -349,6 +354,7 @@ SynthDef(\spaceTri,{
 	sig = sig * env * amp;      // Signal Culmination
 
 	// Outputing....
+
 	sig = Pan2.ar(sig, out);
 	Out.ar(out, sig)
 }).add;
@@ -364,7 +370,51 @@ x = Synth(\spaceTri, [
 Synth(\spaceTri)
 
 
-s.reboot;
-s.plotTree;
-s.meter;
-s.boot;
+// Playing with mixes!!!
+(
+SynthDef(\abyss, {
+	arg freq = 500, amp = 0.6, out = 0, pha = 0, atk = 0.4, rel = 2;
+	var sig, env;
+
+	sig = Mix.new(
+		Array.fill(6,
+			{SinOsc.ar(freq + freq.rand, pha, 0.1) },
+	),
+		Saw.ar(freq/2, 1),
+	);
+
+	sig = FreeVerb.ar(sig, 0.8, 0.8, 0.3);
+
+	env = EnvGen.kr(Env.perc(atk, rel), doneAction:2);
+
+	sig = sig * env * amp;
+
+	sig = Pan2.ar(sig, out);
+	Out.ar(out, sig);
+}).add;
+)
+
+Synth(\abyss)
+
+(
+b = Routine {
+	i = 1;
+
+	12.do {
+		Synth(\abyss,
+			[\freq, i*100,
+				\atk, 0.05,
+				\rel, 3.5,
+				\amp, 0.3]);
+		0.125.wait;
+		i = i + 1;
+	};
+})
+
+(
+~playB = {
+	b.reset;
+	b.play;
+})
+
+~playB.value;

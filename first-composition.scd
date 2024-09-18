@@ -1,14 +1,16 @@
 // Iniitialization Block
 (
-s.boot;        // Starts the audio server
+s.reboot;        // Starts the audio server
 s.plotTree;    // Visual of synth nodes and groups on the server
 s.meter        // Level Meterd
 )
 
 
+// SynthDef Section!!!
+
 (     // Band-Pass Filtered Sawtooth
 SynthDef(\bpfsaw, {
-	arg atk=2, sus=0, rel=3, c1=1, c2=(-1),
+	arg atk=2, sus=0, rel=3, c1=1, c2=(-1),      // in order: attack, sustain, release
 	freq=500, cf=1500, rq=0.2, amp=1, out=0;
 	var sig, env;
 
@@ -20,7 +22,28 @@ SynthDef(\bpfsaw, {
 	sig = sig * env * amp;    // Signal Culmination
 
 	Out.ar(out, sig);         // Output
-}).add
+}).add;
+
+SynthDef(\woosh, {
+	arg freq = 500, amp = 0.6, out = 0, pha = 0, atk = 0.4, rel = 2;
+	var sig, env;
+
+	sig = Mix.new(
+		Array.fill(6,
+			{SinOsc.ar(freq + freq.rand, pha, 0.1) },
+	),
+		Saw.ar(freq/2, 1),
+	);
+
+	sig = FreeVerb.ar(sig, 0.8, 0.8, 0.3);
+
+	env = EnvGen.kr(Env.perc(atk, rel), doneAction:2);
+
+	sig = sig * env * amp;
+
+	sig = Pan2.ar(sig, out);
+	Out.ar(out, sig);
+}).add;
 )
 
 (
@@ -49,11 +72,60 @@ a = Routine {
 
         // Increment the loop counter, print, wait
         j = j + 1;
-		Post << "m - " << j << Char.nl;
+		//Post << "m - " << j << Char.nl;
         1.wait;
     }
 };
+
+b = Routine {
+	i = 1;
+
+	12.do {
+		Synth(\woosh,
+			[\freq, i*100,
+				\atk, 0.05,
+				\rel, 3.5,
+				\amp, 0.3]);
+		0.125.wait;
+		i = i + 1;
+	};
+};
+
 )
 
+// Mic Test-Testing 1, 2
+Synth(\woosh)
+Synth(\bpfsaw)
+
 a.play;
-a.stop;
+b.play;
+
+// Learning Functions as well!!!
+(
+~playB = {
+	b.reset;
+	b.play;
+};
+~playA = {
+	a.reset;
+	a.play;
+};
+)
+
+a.reset;
+// To .do loop and call functions, must use a routine
+(
+c = Routine {
+	//  s.record(duration: 30);    // We can actually record our tracks!!!!
+	~playA.value;
+	8.wait;
+	4.do {
+		~playB.value;
+		4.wait;
+	};
+	8.wait;
+	~playB.value;
+	a.stop;
+})
+
+c.play;  // So far this is the composition!!!
