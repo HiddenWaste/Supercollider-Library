@@ -10,18 +10,32 @@ s.meter        // Level Meterd
 
 (     // Band-Pass Filtered Sawtooth
 SynthDef(\bpfsaw, {
-	arg atk=2, sus=0, rel=3, c1=1, c2=(-1),      // in order: attack, sustain, release
+	arg atk=2, sus=0, rel=3, c1=1, c2=(-1),
+	detune=0.2, pan=0, cfhzmin=0.1, cfhzmax=0.3,
+	cfmin=500, cfmax=2000, rqmin=0.1, rqmax=0.2,
+	lsf=200, ldb=0,
 	freq=500, cf=1500, rq=0.2, amp=1, out=0;
 	var sig, env;
 
 	env = EnvGen.kr(Env([0,1,1,0], [atk, sus, rel], [c1, 0, c2]), doneAction:2);
-	sig = Saw.ar(freq);
-	sig = BPF.ar(sig, cf, rq);
-	sig = Pan2.ar(sig, 0);
 
-	sig = sig * env * amp;    // Signal Culmination
+	sig = Saw.ar(freq * LFNoise1.kr(0.5, detune).midiratio);
 
-	Out.ar(out, sig);         // Output
+	sig = BPF.ar(
+		sig,
+		{LFNoise1.kr(
+			LFNoise1.kr(4).exprange(cfhzmin, cfhzmax)
+		).exprange(cfmin, cfmax)}!2,
+		{LFNoise1.kr(0.1).exprange(rqmin, rqmax)}!2
+	);
+
+	sig = BLowShelf.ar(sig, lsf, 0.5, ldb);
+
+	sig = Balance2.ar(sig[0], sig[1], pan);
+
+	sig = sig * env * amp;
+
+	Out.ar(out, sig);
 }).add;
 
 SynthDef(\woosh, {
@@ -135,3 +149,54 @@ c = Routine {
 })
 
 ~playC.value;  // So far this is the composition!!!
+
+
+(
+~rsaw = Pbind(
+	\instrument, \bpfsaw,
+	\freq, Pwrand([4, 8, 12], [0.4, 0.5, 0.1], inf),
+	\atk, 0.1,
+	\dur, 2,
+	\amp, Pexprand(0.4, 0.7, inf),
+	\out, Pexprand(-0.7, 0.7, inf),
+	).play;
+
+~chords = Pbind(
+	\instrument, \bpfsaw,
+	\dur, Pwhite(4.0,8.0,inf),
+	\midinote, Pxrand([
+		Scale.minor.degrees+60,
+		Scale.minor.degrees+57,
+		Scale.minor.degrees+53,
+		Scale.minor.degrees+50,
+		],inf),
+	\detune, Pexprand(0.05, 0.2, inf),
+	\cfmin, 100,
+	\cfmax, 1500,
+	\rqmin, Pexprand(0.01, 0.15, inf),
+	\atk, Pwhite(2.0,2.5,inf),
+	\rel, Pwhite(6.5,10.0,inf),
+	\ldb, 6,
+	\amp, 0.3,
+	\out, 0,
+	).play;
+)
+
+s.reboot
+
+(
+~dome = Pbindef(\a,
+	\instrument, \bpfsaw,
+	\dur, Pwrand([1, 0.25, 0.5], [0.1, 0.6, 0.3], inf),
+	\amp, 0.3,
+	\degree, Prand(Scale.minor.degrees+60, inf);
+	\detune, 0.6,
+	\ldb, 3,
+).play;
+)
+
+~chords.stop;
+~chords.play;
+~rsaw.play;
+~rsaw.stop;
+~playB.value;

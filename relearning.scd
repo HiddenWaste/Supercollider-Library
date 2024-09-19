@@ -42,6 +42,8 @@ SynthDef(\pulse, {
 }).add;
 )
 
+Synth(\pulse)
+
 i = inf;   // iterator 0.0
 
 (
@@ -246,14 +248,46 @@ SynthDef(\bpfsaw, {
 Synth(\bpfsaw)
 
 (
-~chords = Pbind(
+Synth.new(\bpfsaw,
+	[
+		\freq, 8,
+		\atk, 0,
+		]
+	);
+)
+
+~reboot.value;
+
+(
+~rsaw = Pbind(
 	\instrument, \bpfsaw,
-	\dur, Pwhite(4.5,7.0,inf),
-	\midinote, Pxrand([
+	\freq, Pwrand([4, 8, 12], [0.4, 0.5, 0.1], inf),
+	\atk, 0.1,
+	\dur, 2,
+	\amp, Pexprand(0.4, 0.7, inf),
+	\out, Pexprand(-0.7, 0.7, inf),
+	).play;
+)
+
+~chords.play;
+
+s.reboot;
+
+
 		[23,35,54,63,64],
-		[45,52,54,59,63],
+		[45,52,54,59,61,64],
 		[28,40,47,56,59,63],
 		[42,52,57,61,63],
+
+(
+~chords = Pbind(
+	\instrument, \bpfsaw,
+	\dur, Pwhite(4.0,8.0,inf),
+	\midinote, Pxrand([
+		Scale.minor.degrees+60,
+		Scale.minor.degrees+57,
+		Scale.minor.degrees+53,
+		Scale.minor.degrees+50,
 		],inf),
 	\detune, Pexprand(0.05, 0.2, inf),
 	\cfmin, 100,
@@ -262,11 +296,26 @@ Synth(\bpfsaw)
 	\atk, Pwhite(2.0,2.5,inf),
 	\rel, Pwhite(6.5,10.0,inf),
 	\ldb, 6,
-	\amp, 0.2,
+	\amp, 0.3,
 	\out, 0,
 	).play;
 )
 
+~chords.stop;
+~chords.play;
+~rsaw.play;
+
+(
+Pbindef(\a,
+	\instrument, \pulse,
+	\midinote, Prand([56, 60, 61, 57, 50], inf),
+	\dur, Pwrand([0.25, 0.5], [0.7, 0.3], inf),
+	\amp, 0.6,
+	\atk, 0.01,
+	\sus, 0.01,
+	\dec, 0.25,
+).play;
+)
 
 // This is lovely!
 (
@@ -511,6 +560,8 @@ SynthDef.new(\kick, {
 
 
 ~myKick = Synth.new(\kick, [\freqA, 550, \atk, 0.01, \rel, 1, \amp, 1]);
+
+s.record(duration: 30);
 
 
 Pbind
