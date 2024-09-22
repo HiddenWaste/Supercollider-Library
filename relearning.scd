@@ -274,10 +274,7 @@ Synth.new(\bpfsaw,
 s.reboot;
 
 
-		[23,35,54,63,64],
-		[45,52,54,59,61,64],
-		[28,40,47,56,59,63],
-		[42,52,57,61,63],
+
 
 (
 ~chords = Pbind(
@@ -582,3 +579,59 @@ Pbindef
 
 ~myKick.stop;
 ~myKick.play;>
+
+(
+SynthDef(\cheapPiano1, {   ////     INITIAL STATE OF THIS SYNTHDEF FROM: github.com/sclorkhub/sclorksynths/blob/master/synthdefs/keyboards/cheappiano1.scd
+	arg
+	//Standard values
+	out = 0, freq = 440, amp = 0.1, atk = 0.001, rel = 1, pan = 0,
+	//These range from 0 to 1
+	tone = 0.25, hollowness = 0;
+
+	var hammer, snd, delay, tonefreq, env;
+
+	env = Env.perc(atk, rel, amp * 4, -1).ar(doneAction: 2);
+
+	// Delay line times: freq, freq - 4 cents, freq + 3 cents. In the original this was done by converting freq to midi.
+	delay = (1 / (freq * [2.pow(-0.04/12), 1, 2.pow(0.03/12)]));
+	tonefreq = tone.linlin(0, 1, 1000, 5000);
+
+	hammer = Decay2.ar(
+		in: Impulse.ar(0.001),
+		attackTime: 0.008,
+		decayTime: 0.04,
+		mul: LFNoise2.ar(freq: amp.linlin(0, 1, tonefreq, 2 * tonefreq), mul: 0.25)
+	); //Try LFNoise1, LFNoise0, or even LFClipNoise above for a slightly grainier sound.
+
+	snd = CombL.ar(hammer, delay, delay, 50 * amp);
+	snd = HPF.ar(snd, hollowness.linlin(0, 1, 50, 1000));
+	snd = snd * env;
+	snd = Limiter.ar(snd);
+	Out.ar(out, Pan2.ar(snd, pan));  // COMBINE THE OUT AND PAN FUCNTIONS 0.0
+},
+metadata: (
+	credit: "based on something posted 2008-06-17 by jeff, based on an old example by james mcc",
+	category: \keyboards,
+	tags: [\casio, \piano, \pitched]
+	)
+).add;
+)
+
+Scale.minor.degrees+60
+
+Synth(\cheapPiano1, [\amp, Pexprand(0.1, 0.3, inf)])
+Synth(\kick)
+
+(
+Pbindef(\p,
+	\instrument, \cheapPiano1,
+	\midinote, Prand([61, 63, 64, 70, Rest(1)], inf),
+	\dur, Pwrand([1, 0.5, 0.25], [0.3, 0.3, 0.4], inf),
+	\amp, Pexprand(0.1, 0.2, inf),
+	\tone, Pexprand(0.4, 0.5, inf),
+	\rel, Pwhite(1.0, 2.0, inf),
+	\atk, Pexprand(0.001, 0.01, inf),
+	\pan, Pexprand(-0.4, 0.4, inf),
+	\hollowness, 0.3,
+).play;
+)

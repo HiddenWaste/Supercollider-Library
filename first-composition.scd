@@ -5,19 +5,23 @@ s.plotTree;    // Visual of synth nodes and groups on the server
 s.meter        // Level Meterd
 )
 
+Server.killAll;
+
 
 // SynthDef Section!!!
 
 (     // Band-Pass Filtered Sawtooth
 SynthDef(\bpfsaw, {
-	arg atk=2, sus=0, rel=3, c1=1, c2=(-1),
-	detune=0.2, pan=0, cfhzmin=0.1, cfhzmax=0.3,
+	arg atk=2, sus=0, rel=3,                        // Attack, Sustain, and Release for Envelopw
+	c1=1, c2=(-1),
+	detune=0.2, cfhzmin=0.1, cfhzmax=0.3,
 	cfmin=500, cfmax=2000, rqmin=0.1, rqmax=0.2,
 	lsf=200, ldb=0,
-	freq=500, cf=1500, rq=0.2, amp=1, out=0;
+	freq=500, cf=1500, rq=0.2,
+	amp=1, out=0, pan=0;                            // Baseline Amplitude, Out and Pan arguments
 	var sig, env;
 
-	env = EnvGen.kr(Env([0,1,1,0], [atk, sus, rel], [c1, 0, c2]), doneAction:2);
+	env = EnvGen.kr(Env([0,1,1,0], [atk, sus, rel], [c1, 0, c2]), doneAction:2); // Envelop that crescendos and decrescendos, env arguments passed, and a curve based on c1 and c2
 
 	sig = Saw.ar(freq * LFNoise1.kr(0.5, detune).midiratio);
 
@@ -39,26 +43,44 @@ SynthDef(\bpfsaw, {
 }).add;
 
 SynthDef(\woosh, {
-	arg freq = 500, amp = 0.6, out = 0, pha = 0, atk = 0.4, rel = 2;
+	arg freq = 500, amp = 0.6, out = 0, pha = 0,
+	c1=1, c2=(-1),
+	hpHz=2000,
+	atk = 0.1, rel = 2, fade=1;
 	var sig, env;
 
 	sig = Mix.new(
-		Array.fill(6,
+		[Array.fill(6,
 			{SinOsc.ar(freq + freq.rand, pha, 0.1) },
-	),
-		Saw.ar(freq/2, 1),
-	);
+	)
+]);
 
-	sig = FreeVerb.ar(sig, 0.8, 0.8, 0.3);
+	sig = FreeVerb.ar(sig, 0.8, 0.8, 0.3)!2;
 
-	env = EnvGen.kr(Env.perc(atk, rel), doneAction:2);
+	sig = HPF.ar(sig, hpHz);
 
-	sig = sig * env * amp;
+	env = EnvGen.kr(Env([0, 0.8, 0.2], [1,1], [c1, 0, c2]), doneAction:2);
 
-	sig = Pan2.ar(sig, out);
+	sig = sig * env;
+
+	sig = Balance2.ar(sig[0], sig[1], Line.kr(-0.7, 1.0, rel), amp);
 	Out.ar(out, sig);
 }).add;
 )
+
+Synth(\woosh, [\c2, 0.2, \rel, 6, \amp, 0.4, \freq, 4500])
+
+(
+~wind = Pbindef(\wind,
+	\instrument, \woosh,
+	\c2, 0.2,
+	\rel, Pxrand([6, 8, 10], 1),
+	\amp, 0.4,
+	\freq, Pwrand([4500, 4000, 200, 500], [0.5, 0.3, 0.1, 0.1], 1),
+).play;
+)
+
+s.reboot;
 
 (
 a = Routine {
@@ -91,7 +113,7 @@ a = Routine {
     }
 };
 
-b = Routine {
+big_whoosh = Routine {
 	i = 1;
 
 	12.do {
@@ -124,6 +146,9 @@ b.play;
 	a.reset;
 	a.play;
 };
+~playC = {
+
+};
 )
 
 a.reset;
@@ -154,7 +179,7 @@ c = Routine {
 (
 ~rsaw = Pbind(
 	\instrument, \bpfsaw,
-	\freq, Pwrand([4, 8, 12], [0.4, 0.5, 0.1], inf),
+	\freq, Pwrand([4, 8, 12, 20], [0.4, 0.4, 0.1, 0.1], inf),
 	\atk, 0.1,
 	\dur, 2,
 	\amp, Pexprand(0.4, 0.7, inf),
@@ -165,36 +190,71 @@ c = Routine {
 	\instrument, \bpfsaw,
 	\dur, Pwhite(4.0,8.0,inf),
 	\midinote, Pxrand([
-		Scale.minor.degrees+60,
+		/*Scale.minor.degrees+60,
 		Scale.minor.degrees+57,
 		Scale.minor.degrees+53,
-		Scale.minor.degrees+50,
+		Scale.minor.degrees+50,*/
+		[23,35,54,63,64],
+		[45,52,54,59,61,64],
+		[28,40,47,56,59,63],
+		[42,52,57,61,63],
 		],inf),
 	\detune, Pexprand(0.05, 0.2, inf),
-	\cfmin, 100,
-	\cfmax, 1500,
+	\cfmin, Pwrand([100, 300, 500], [0.6, 0.3, 0.1], inf),
+	\cfmax, Pwrand([1500, 2000, 1000], [0.7, 0.2, 0.1], inf),
 	\rqmin, Pexprand(0.01, 0.15, inf),
 	\atk, Pwhite(2.0,2.5,inf),
 	\rel, Pwhite(6.5,10.0,inf),
 	\ldb, 6,
-	\amp, 0.3,
+	\amp, Pexprand(0.15, 0.3, inf),
 	\out, 0,
 	).play;
 )
 
 s.reboot
+Server.killAll;
 
 (
-~dome = Pbindef(\a,
+Pbindef(\a,
 	\instrument, \bpfsaw,
-	\dur, Pwrand([1, 0.25, 0.5], [0.1, 0.6, 0.3], inf),
-	\amp, 0.3,
-	\degree, Prand(Scale.minor.degrees+60, inf);
-	\detune, 0.6,
-	\ldb, 3,
+	\dur, Pwhite(4.0,8.0,inf),
+	\amp, Pexprand(0.1,0.3,inf),
+	\rel, Pwhite(5.0,10.0, inf),
+	\sus, 0.3,
+	\dec, Pwrand([1.5, 2, 1], [0.5, 0.3, 0.2], inf),
+	\cfmin, 5000,
+	\cfmax, 5500,
+	\midinote, Pxrand([
+		[54,63,64],
+		[54,59,61,64],
+		[56,59,63],
+		[57,61,63]], inf),
+	\detune, Pexprand(0.05, 0.1, inf),
+	\ldb, (-1),
+	\lsf, 900,
+	\atk, Pwhite(0.05,0.08,inf),
 ).play;
 )
 
+Synth(\whoosh)
+
+(
+Pbindef(\wind,
+	\instrumnet, \woosh,
+	i = 1;
+
+	12.do {
+		Synth(\woosh,
+			[\freq, i*100,
+				\atk, 0.05,
+				\rel, 3.5,
+				\amp, 0.3]);
+		0.125.wait;
+		i = i + 1;
+	};
+)
+
+s.record(duration:150);
 ~chords.stop;
 ~chords.play;
 ~rsaw.play;
