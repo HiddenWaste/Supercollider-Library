@@ -74,7 +74,7 @@ SynthDef(\woosh, {
 // SOUND CHECK???
 
 Synth(\woosh)
-Synth(\woosh, [\c2, 0.2, \rel, 6, \dur, 4, \amp, , \freq, Prand([4000, 4500, 5000], 1)])
+Synth(\woosh, [\c2, 0.2, \rel, 6, \dur, 4, \amp,1 , \freq, Prand([4000, 4500, 5000], 1)])
 Synth(\bpfsaw);
 
 ///////////////////////////////////////////////////////////////////////////
@@ -106,7 +106,7 @@ Server.killAll;
 	\freq, Pwrand([4, 8, 12, 20], [0.4, 0.4, 0.1, 0.1], inf),
 	\atk, 0.1,
 	\dur, 2,
-	\amp, Pexprand(1.3, 1.6, inf),
+	\amp, Pexprand(0.8, 1.0, inf),
 	\out, Pexprand(-0.7, 0.7, inf),
 	).play;
 
