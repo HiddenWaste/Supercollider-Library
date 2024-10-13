@@ -5,6 +5,20 @@ s.plotTree;    // Visual of synth nodes and groups on the server
 s.meter        // Level Meterd
 )
 
+(
+~intialize = Routine{
+	s.reboot;
+	15.wait;
+	s.plotTree;
+	s.meter;
+	a = 'Begin!';
+	a.postln;
+};
+)
+
+~intialize.value;
+
+
 ///////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////
 
@@ -82,23 +96,23 @@ Synth(\bpfsaw);
 
 // ROUTINES FOR COMPOSITION
 (
+
+// Tha BIIIG woooosh
 w = Routine {
 	i = 1;
 
-	12.do {
+	12.do { // 12.do will do 12 times in a row
 		Synth(\woosh,
-			[\freq, i*100,
+			[\freq, i*100,  // Able to use an iterator within the loop!
 				\atk, 0.05,
 				\rel, 3.5,
 				\amp, 0.3]);
 
-		0.125.wait;
-		i = i + 1;
+		0.125.wait;         // Wait just long enough so they don't overlap
+		i = i + 1;          // Increment Iterator
 	};
 };
 )
-s.reboot;
-Server.killAll;
 
 (
 ~rsaw = Pbind(
