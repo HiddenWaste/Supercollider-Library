@@ -144,7 +144,7 @@ SynthDef(\waves, { | out=0, pan=0, amp=0.8, dur=3, sd=300, ed=25, lpf_start=4000
 
 	sig = Dust.ar(den, 1.5);
 
-	//sig = LPF.ar(sig, lpf_curve);
+	sig = LPF.ar(sig, lpf_curve);
 
 	sig = BLowShelf.ar(sig, 500, 1, 12, 1.5);
 
@@ -158,16 +158,53 @@ SynthDef(\waves, { | out=0, pan=0, amp=0.8, dur=3, sd=300, ed=25, lpf_start=4000
 }).add;
 )
 
+// going to attempt a different version of the waves, via White Noise!! Not sure why I didn't start
+//    with it.....
+
+(
+SynthDef(\wind, { |out=0, amp=0.7, lpf_freq=3000, pan=0, hpf_freq=30|
+	var sig, env;
+
+	sig = WhiteNoise.ar(0.8);
+
+	sig = HPF.ar(sig, hpf_freq);
+
+	sig = LPF.ar(sig, lpf_freq);
+
+	sig = BPF.ar(sig, 500, 0.8);
+
+	sig = Pan2.ar(sig, pan);
+
+	sig = sig * amp;
+
+	Out.ar(out, sig);
+}).add;
+)
+
+
+Synth(\wind, [\amp, 0.3, \hpf_freq, 200, \lpf_freq, 2000]);
+
+766766666h
+
 (
 Pbindef(\rough_waves,
 	\instrument, \waves,
 	\dur, Pwhite(3, 6),
 	\sd, Pwrand([300, 200, 500, 250], [0.5, 0.4, 0.1], inf),
 	\ed, Prand([20, 25, 30], inf),
+	\amp, 0.3,
 ).play;
 )
 
 Synth(\chirp, [\freq, 4000, \dur, 0.5, \rel, 0.5])
+
+
+
+
+
+
+
+
 
 
 
@@ -254,4 +291,43 @@ SynthDef("help-Dust", { arg out=0;
         Dust.ar(XLine.kr(20000, 2, 10), 0.5)
     )
 }).play;
+)
+
+
+SynthDef(\woosh, {
+	arg freq = 500, amp = 0.6, out = 0, pha = 0,
+	c1=1, c2=(-1),
+	hpHz=2000,
+	atk = 0.1, rel = 2, fade=1;
+	var sig, env;
+
+	sig = Mix.new(
+		[Array.fill(6,
+			{SinOsc.ar(freq + freq.rand, pha, 0.1) },
+	)
+]);
+
+	sig = FreeVerb.ar(sig, 0.8, 0.8, 0.3)!2;
+
+	sig = HPF.ar(sig, hpHz);
+
+	env = EnvGen.kr(Env([0, 0.8, 0.2], [1,1], [c1, 0, c2]), doneAction:2);
+
+	sig = sig * env;
+
+	sig = Balance2.ar(sig[0], sig[1], Line.kr(-0.7, 1.0, rel), amp);
+	Out.ar(out, sig);
+}).add;
+)
+
+Synth(\woosh, [\c2, 0.2, \rel, 6, \amp, 0.4, \freq, 4500])
+
+(
+~wind = Pbindef(\wind,
+	\instrument, \woosh,
+	\c2, 0.2,
+	\rel, Pxrand([6, 8, 10], 1),
+	\amp, 0.4,
+	\freq, Pwrand([4500, 4000, 200, 500], [0.5, 0.3, 0.1, 0.1], 1),
+).play;
 )

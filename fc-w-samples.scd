@@ -8,23 +8,29 @@ s.meter        // Level Meterd
 Server.killAll;
 
 
+
+
 // SynthDef Section!!!
 
 (     // Band-Pass Filtered Sawtooth
 SynthDef(\bpfsaw, {
-	arg atk=2, sus=0, rel=3,                        // Attack, Sustain, and Release for Envelopw
+	arg atk=2, sus=0, rel=3,          // Attack, Sustain, and Release for Envelopw
 	c1=1, c2=(-1),
 	detune=0.2, cfhzmin=0.1, cfhzmax=0.3,
 	cfmin=500, cfmax=2000, rqmin=0.1, rqmax=0.2,
 	lsf=200, ldb=0,
 	freq=500, cf=1500, rq=0.2,
-	amp=1, out=0, pan=0;                            // Baseline Amplitude, Out and Pan arguments
-	var sig, env;
+	amp=1, out=0, pan=0;   // Baseline Amplitude, Out and Pan arguments, amp bus control
+
+	var sig, env, globalamp;
+
+	globalamp = In.kr(~ampBusR, 1);
 
 	env = EnvGen.kr(Env([0,1,1,0], [atk, sus, rel], [c1, 0, c2]), doneAction:2); // Envelop that crescendos and decrescendos, env arguments passed, and a curve based on c1 and c2
 
 	sig = Saw.ar(freq * LFNoise1.kr(0.5, detune).midiratio);
 
+	// Effects
 	sig = BPF.ar(
 		sig,
 		{LFNoise1.kr(
@@ -34,53 +40,10 @@ SynthDef(\bpfsaw, {
 	);
 
 	sig = BLowShelf.ar(sig, lsf, 0.5, ldb);
-
-	sig = Saw.ar(
-
 	sig = Balance2.ar(sig[0], sig[1], pan);
-
-	sig = sig * env * amp;
-
+	sig = sig * env * amp * globalamp;
 	Out.ar(out, sig);
-}).add;
-
-SynthDef(\woosh, {
-	arg freq = 500, amp = 0.6, out = 0, pha = 0,
-	c1=1, c2=(-1),
-	hpHz=2000,
-	atk = 0.1, rel = 2, fade=1;
-	var sig, env;
-
-	sig = Mix.new(
-		[Array.fill(6,
-			{SinOsc.ar(freq + freq.rand, pha, 0.1) },
-	)
-]);
-
-	sig = FreeVerb.ar(sig, 0.8, 0.8, 0.3)!2;
-
-	sig = HPF.ar(sig, hpHz);
-
-	env = EnvGen.kr(Env([0, 0.8, 0.2], [1,1], [c1, 0, c2]), doneAction:2);
-
-	sig = sig * env;
-
-	sig = Balance2.ar(sig[0], sig[1], Line.kr(-0.7, 1.0, rel), amp);
-	Out.ar(out, sig);
-}).add;
-)
-
-Synth(\woosh, [\c2, 0.2, \rel, 6, \amp, 0.4, \freq, 4500])
-
-(
-~wind = Pbindef(\wind,
-	\instrument, \woosh,
-	\c2, 0.2,
-	\rel, Pxrand([6, 8, 10], 1),
-	\amp, 0.4,
-	\freq, Pwrand([4500, 4000, 200, 500], [0.5, 0.3, 0.1, 0.1], 1),
-).play;
-)
+}).add;)
 
 s.reboot;
 
@@ -115,7 +78,7 @@ a = Routine {
     }
 };
 
-big_whoosh = Routine {
+~big_whoosh = Routine {
 	i = 1;
 
 	12.do {
@@ -128,7 +91,6 @@ big_whoosh = Routine {
 		i = i + 1;
 	};
 };
-
 )
 
 // Mic Test-Testing 1, 2
@@ -186,7 +148,7 @@ c = Routine {
 	\dur, 2,
 	\amp, Pexprand(0.4, 0.7, inf),
 	\out, Pexprand(-0.7, 0.7, inf),
-	).play;
+	);
 
 ~chords = Pbind(
 	\instrument, \bpfsaw,
@@ -210,8 +172,10 @@ c = Routine {
 	\ldb, 6,
 	\amp, Pexprand(0.15, 0.3, inf),
 	\out, 0,
-	).play;
+	);
 )
+
+~chords.play;
 
 s.reboot
 Server.killAll;
@@ -262,3 +226,53 @@ s.record(duration:150);
 ~rsaw.play;
 ~rsaw.stop;
 ~playB.value;
+
+Synth(\bpfsaw, [\freq, 20, \amp, 0.08]);
+
+(
+comp = Routine.new({
+    PfadeIn.new(~chords, 4, 0, 0.1).play; // Fade in ~chords over 8 seconds
+    8.wait; // Wait for 8 seconds
+    PfadeIn.new(~rsaw, 8).play; // Fade in ~rsaw over 8 seconds
+    4.wait; // Wait 4 more seconds
+    ~rsaw.set([\freq, 20]); // Change the frequency of the ongoing rsaw pattern
+}).play;
+)
+
+// Creating a routine to actually play this piece
+// start bpf saw (fade-in)
+//         wait 8 bars???
+// start rsaw
+//        wait 12 bars???
+// start sample routine of breathing
+
+
+// first learning how to fade-in ~chords!
+
+// guess we're stepping into busses!
+~ampBusR = Bus.control(s, 1);
+
+
+///  ----------- made updates to bpfsaw synthdef for bus control ------------
+SynthDef(\fadeControl, {
+    arg outBus = 0, fadeTime = 8, minAmp = 0, maxAmp = 1;
+    var env = EnvGen.kr(Env([minAmp, maxAmp], [fadeTime], \exp), doneAction: 2);
+    Out.kr(outBus, env);
+}).add;
+
+(
+~c = Routine({
+    // Start the pattern (it uses the global amp control)
+	~rsaw.play;
+
+    // Start the fade-in by controlling the global amplitude
+    Synth(\fadeControl, [\outBus, ~ampBusR, \fadeTime, 16, \minAmp, 0.01, \maxAmp, 0.8]);
+
+    // Wait while the fade-in occurs
+    10.wait;
+
+	~rsaw.stop;
+});
+)
+
+~c.play;
