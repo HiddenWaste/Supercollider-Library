@@ -42,15 +42,16 @@ s.waitForBoot(
 		Out.ar(\out.ir(0), sig);
 	}).add;
 
-	~b_fx = Bus.audio(s, 2);
-	~reverb_init = ( Synth(\reverb, [\in: ~b_fx, \out:0]));
-	ServerTree.add(~reverb_init);
-)
 
 )
-
+)
+~b_fx = Bus.audio(s, 2);
 
 (
+
+	~reverb_init = ( Synth(\reverb, [\in: ~b_fx, \out:0]));
+	ServerTree.add(~reverb_init);
+
 Pbindef(\a,
 	\instrument, \blip,
 	\amp, 0.15,
@@ -60,9 +61,48 @@ Pbindef(\a,
 	\numharm, Prand([50, 100, 150, 200], inf),
 	\freq, Pxrand([200, 240, 320, 300], inf),
 	\pan, Pwhite(-1.0, 1.0, inf)
-).play
+).play;
+
+Pbindef(\b,
+	\instrument, \blip,
+	\amp, 0.1,
+	\out, ~b_fx,
+	\freq, Pxrand([100, 120, 160, 150], inf),
+	\dur, 2,
+	\rel, 1.5,
+	\pan, Pwhite(-0.5, 0.5, inf)
+).play;
+
+Pbindef(\c,
+	\instrument, \blip,
+	\amp, 0.1,
+	\numharm, 500,
+	\freq, Pxrand([50, 60, 80, 75], inf),
+	\dur, 4,
+	\sus, 2,
+	\rel, 1.5,
+	\pan, Pwhite(-0.3, 0.3, inf)
+).play;
+
+
 )
 
-Synth(\blip);
+// Recorder instantiation learning!
+r  = Recorder.new(s);
 
+// record into a flac file
+r.recHeaderFormat = "flac";
+
+// default 'float' is incompatible with flac. set to 24bit:
+r.recSampleFormat = "int24";
+
+// set very obvious prefix for files
+r.filePrefix = "blip_dirge_1-16_";
+
+// start recording:
+r.record(duration:30);
+
+
+Synth(\blip_phase);
+s.record(duration:20
 Server.killAll;
