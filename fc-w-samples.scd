@@ -7,9 +7,6 @@ s.meter        // Level Meterd
 
 Server.killAll;
 
-
-
-
 // SynthDef Section!!!
 
 (     // Band-Pass Filtered Sawtooth
@@ -22,11 +19,10 @@ SynthDef(\bpfsaw, {
 	freq=500, cf=1500, rq=0.2,
 	amp=1, out=0, pan=0;   // Baseline Amplitude, Out and Pan arguments, amp bus control
 
-	var sig, env, globalamp;
+	var sig, env;
 
-	globalamp = In.kr(~ampBusR, 1);
-
-	env = EnvGen.kr(Env([0,1,1,0], [atk, sus, rel], [c1, 0, c2]), doneAction:2); // Envelop that crescendos and decrescendos, env arguments passed, and a curve based on c1 and c2
+	// Envelop that crescendos and decrescendos, env arguments passed, and a curve based on c1 and c2
+	env = EnvGen.kr(Env([0,1,1,0], [atk, sus, rel], [c1, 0, c2]), doneAction:2);
 
 	sig = Saw.ar(freq * LFNoise1.kr(0.5, detune).midiratio);
 
@@ -41,9 +37,76 @@ SynthDef(\bpfsaw, {
 
 	sig = BLowShelf.ar(sig, lsf, 0.5, ldb);
 	sig = Balance2.ar(sig[0], sig[1], pan);
-	sig = sig * env * amp * globalamp;
+	sig = sig * env * amp;
 	Out.ar(out, sig);
-}).add;)
+}).add;
+)
+
+(
+~rsaw = Pbind(
+	\instrument, \bpfsaw,
+	\freq, Pwrand([4, 8, 12, 20], [0.4, 0.4, 0.1, 0.1], inf),
+	\atk, 0.1,
+	\dur, 2,
+	\amp, Pexprand(0.4, 0.7, inf),
+	\out, Pexprand(-0.7, 0.7, inf),
+	);
+
+~chords = Pbind(
+	\instrument, \bpfsaw,
+	\dur, Pwhite(4.0,8.0,inf),
+	\midinote, Pxrand([
+		/*Scale.minor.degrees+60,
+		Scale.minor.degrees+57,
+		Scale.minor.degrees+53,
+		Scale.minor.degrees+50,*/
+		[23,35,54,63,64],
+		[45,52,54,59,61,64],
+		[28,40,47,56,59,63],
+		[42,52,57,61,63],
+		],inf),
+	\detune, Pexprand(0.05, 0.2, inf),
+	\cfmin, Pwrand([100, 300, 500], [0.6, 0.3, 0.1], inf),
+	\cfmax, Pwrand([1500, 2000, 1000], [0.7, 0.2, 0.1], inf),
+	\rqmin, Pexprand(0.01, 0.15, inf),
+	\atk, Pwhite(2.0,2.5,inf),
+	\rel, Pwhite(6.5,10.0,inf),
+	\ldb, 6,
+	\amp, Pexprand(0.15, 0.3, inf),
+	\out, 0,
+	);
+)
+
+~chordsIn = PfadeIn.new(~chords, 16);
+~chordsIn.play;
+~chordsOut = PfadeOut.new(~chords, 12);
+~chordsOut.play;
+~rsawIn = PfadeIn.new(~rsaw, 12)
+~rsawIn.play;
+
+(
+~c = Routine({
+    // Start the pattern (it uses the global amp control)
+	~chords.play;
+
+    // Start the fade-in by controlling the global amplitude
+
+    // Wait while the fade-in occurs
+    20.wait;
+
+	~rsaw.play;
+
+});
+)
+
+PfadeIn(~chords, 4);
+PfadeOut(~chords, 4);
+PfadeOut(~rsaw, 4);
+
+~c.play;
+
+~chords.play;
+~chords.stop;
 
 s.reboot;
 
@@ -140,41 +203,6 @@ c = Routine {
 ~playC.value;  // So far this is the composition!!!
 
 
-(
-~rsaw = Pbind(
-	\instrument, \bpfsaw,
-	\freq, Pwrand([4, 8, 12, 20], [0.4, 0.4, 0.1, 0.1], inf),
-	\atk, 0.1,
-	\dur, 2,
-	\amp, Pexprand(0.4, 0.7, inf),
-	\out, Pexprand(-0.7, 0.7, inf),
-	);
-
-~chords = Pbind(
-	\instrument, \bpfsaw,
-	\dur, Pwhite(4.0,8.0,inf),
-	\midinote, Pxrand([
-		/*Scale.minor.degrees+60,
-		Scale.minor.degrees+57,
-		Scale.minor.degrees+53,
-		Scale.minor.degrees+50,*/
-		[23,35,54,63,64],
-		[45,52,54,59,61,64],
-		[28,40,47,56,59,63],
-		[42,52,57,61,63],
-		],inf),
-	\detune, Pexprand(0.05, 0.2, inf),
-	\cfmin, Pwrand([100, 300, 500], [0.6, 0.3, 0.1], inf),
-	\cfmax, Pwrand([1500, 2000, 1000], [0.7, 0.2, 0.1], inf),
-	\rqmin, Pexprand(0.01, 0.15, inf),
-	\atk, Pwhite(2.0,2.5,inf),
-	\rel, Pwhite(6.5,10.0,inf),
-	\ldb, 6,
-	\amp, Pexprand(0.15, 0.3, inf),
-	\out, 0,
-	);
-)
-
 ~chords.play;
 
 s.reboot
@@ -203,22 +231,6 @@ Pbindef(\a,
 )
 
 Synth(\whoosh)
-
-(
-Pbindef(\wind,
-	\instrumnet, \woosh,
-	i = 1;
-
-	12.do {
-		Synth(\woosh,
-			[\freq, i*100,
-				\atk, 0.05,
-				\rel, 3.5,
-				\amp, 0.3]);
-		0.125.wait;
-		i = i + 1;
-	};
-)
 
 s.record(duration:150);
 ~chords.stop;
@@ -249,30 +261,174 @@ comp = Routine.new({
 
 // first learning how to fade-in ~chords!
 
-// guess we're stepping into busses!
-~ampBusR = Bus.control(s, 1);
-
-
-///  ----------- made updates to bpfsaw synthdef for bus control ------------
-SynthDef(\fadeControl, {
-    arg outBus = 0, fadeTime = 8, minAmp = 0, maxAmp = 1;
-    var env = EnvGen.kr(Env([minAmp, maxAmp], [fadeTime], \exp), doneAction: 2);
-    Out.kr(outBus, env);
-}).add;
-
 (
-~c = Routine({
-    // Start the pattern (it uses the global amp control)
-	~rsaw.play;
+var chords = Pbind(
+	\instrument, \bpfsaw,
+	\dur, Pwhite(4.0,8.0,inf),
+	\midinote, Pxrand([
+		/*Scale.minor.degrees+60,
+		Scale.minor.degrees+57,
+		Scale.minor.degrees+53,
+		Scale.minor.degrees+50,*/
+		[23,35,54,63,64],
+		[45,52,54,59,61,64],
+		[28,40,47,56,59,63],
+		[42,52,57,61,63],
+		],inf),
+	\detune, Pexprand(0.05, 0.2, inf),
+	\cfmin, Pwrand([100, 300, 500], [0.6, 0.3, 0.1], inf),
+	\cfmax, Pwrand([1500, 2000, 1000], [0.7, 0.2, 0.1], inf),
+	\rqmin, Pexprand(0.01, 0.15, inf),
+	\atk, Pwhite(2.0,2.5,inf),
+	\rel, Pwhite(6.5,10.0,inf),
+	\ldb, 6,
+	\amp, Pexprand(0.15, 0.3, inf),
+	\out, 0,
+	);
 
-    // Start the fade-in by controlling the global amplitude
-    Synth(\fadeControl, [\outBus, ~ampBusR, \fadeTime, 16, \minAmp, 0.01, \maxAmp, 0.8]);
+chordsIn = PfadeIn.new(pattern:chords, fadeTime:12 );
+chordsOut = PfadeOut.new(pattern:chords, fadeTime:8);
 
-    // Wait while the fade-in occurs
-    10.wait;
-
-	~rsaw.stop;
-});
+chords_0.play;
 )
 
+
+(
+// Create a pattern that you want to fade
+~pat = Pbind(\dur, 0.125, \degree, Pwhite(1,10));
+
+// Fade it in over 30 beats
+~pat = PfadeIn.new(pattern:~pat, fadeTime:30.0, holdTime:1.0, tolerance:0.0001);
+
+// Play it
+~pat.play;
+)
+
+
 ~c.play;
+
+
+// Try out making a marimba? Or editing one online?
+
+/*
+This SynthDef uses BPF in a manner similar to DynKlank.
+BPF gets hit with an impulse (Saw.ar(0)), and outputs a sine wave
+with a sharp attack, and a decay and amplitude both determined by rq.
+
+Modified by Bruno Ruviaro and Josh Mitchell July 2019 and June 2020.
+*/
+(
+SynthDef(\marimba, {
+	|freq = 440, out = 0, amp = 0.4, pan = 0, rq = 0.02,
+        // Controls for BLowShelf
+	shelffreq = 220, rs = 0.81, shelfamp = 2|
+
+	var sig;
+
+	sig = BPF.ar(
+		in: Saw.ar(0),
+		freq: freq,
+		rq: rq);
+
+	sig = BLowShelf.ar(
+		in: sig,
+		freq: shelffreq,
+		rs: rs,
+		db: shelfamp.ampdb);
+
+	sig = Limiter.ar(sig) * amp;
+
+	DetectSilence.ar(in: sig, doneAction: 2);
+
+	Out.ar(out, Pan2.ar(sig, pan));
+}
+).add;
+)
+
+(
+// Big loud marimba thing!
+SynthDef(\marimba_gong, {
+	|freq = 440, out = 0, amp = 0.7, pan = 0, rq = 0.02,
+        // Controls for BLowShelf
+	shelffreq = 220, rs = 0.81, shelfamp = 2,
+	    // Controls for Reverb and Envelope
+	room = 0.7, atk = 1, rel = 4, dec = 1, sus = 1|
+
+	var sig, env;
+
+	// Switched to perc envelope
+	env = EnvGen.ar(Env.perc(atk, rel), gate:1, doneAction:2);
+
+	sig = BPF.ar(
+		in: Saw.ar(0),
+		freq: freq,
+		rq: rq);
+
+	sig = CombN.ar(sig, 0.5, 0.4, 6).scope!2;
+	// Apply Reverb
+	sig = FreeVerb.ar(sig, 0.5, room, 0.8);
+
+	// = Delay2.ar(sig, 1.2);
+
+	/*sig = BLowShelf.ar(
+		in: sig,
+		freq: shelffreq,
+		rs: rs,
+		db: shelfamp.ampdb);*/
+
+	//sig = Limiter.ar(sig) * amp * env;
+
+	sig = LPF.ar(sig, freq);
+
+	sig = sig * amp * env;
+
+	sig = Pan2.ar(sig, pan);
+
+	DetectSilence.ar(in: sig, doneAction: 2);
+
+	Out.ar(out, sig);
+}
+).add;
+)
+
+Synth(\marimba_gong);
+
+(
+Pbindef(\mg,
+	\instrument, \marimba_gong,
+	\amp, 1.6,
+	\dur, 1,
+	\freq, Pxrand((Scale.major.degrees+65).midicps, inf),
+	\pan, Pexprand(-0.9, 0.9),
+).play;
+)
+
+s.reboot;
+// ~verbBus = Bus....(s, 2);
+//     send rsaw and m through verb bus? for same reverb?
+
+(
+~m = Pbind(
+	\instrument, \marimba,
+	\dur, 0.125,
+	\amp, 0.5,
+	\degree, Pwhite(1, 10, inf),
+	\pan, Pexprand(-0.7, 0.7, inf);
+);
+
+~m1 = Pbind(
+	\instrument, \marimba,
+	\dur, Pwrand([2, 4], [0.7, 0.3], inf),
+	\amp, 0.7,
+	\degree, Prand(Scale.major.degrees.midicps, inf),
+	\pan, Pexprand(-0.9, 0.9, inf),
+);
+)
+
+Scale.major.degrees;
+
+~m.play;
+~m1.play;
+s.reboot;
+
+~chords.play;
