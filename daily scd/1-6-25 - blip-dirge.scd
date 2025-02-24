@@ -1,8 +1,14 @@
+Server.killAll;
+
+
 (
 s.waitForBoot(
 	s.meter;
 	s.plotTree;
+)
+)
 
+(
 	SynthDef(\blip, {
 		|freq=200, out=0, pan=0, amp=0.6, numharm=100, atk=0.1, rel=0.5|
 		var sig, env;
@@ -32,8 +38,43 @@ s.waitForBoot(
 		Out.ar(out, sig);
 	}).add;
 
+
+
+
+
+	SynthDef(\blip_2, {
+		|out=0, pan=0, freq=440, numharm=50, amp=08, rel=0.8, atk=0.5,
+	lpf=1000|
+		var sig, env;
+
+		/*sig = Mix.new([
+		Blip.ar(freq, numharm),
+		SinOsc.ar(freq, 0.2),
+	]);*/
+
+	sig = Saw.ar(freq);
+
+	// sig = Ringz.ar(sig, freq*2, 2);
+	sig = MoogFF.ar(sig, freq * 0.25, amp, 0);
+	sig = FreeVerb.ar(sig, 0.5, 0.3, 0.5);
+
+	sig = LPF.ar(sig, lpf);
+	sig = Normalizer.ar(sig, amp);
+	sig = Limiter.ar(sig, amp);
+
+	sig = BPF.ar(sig, 2000, 1.5);
+
+		env = EnvGen.ar(Env([0,1,0], [atk, rel]), doneAction:2);
+
+		sig = sig * env * amp;
+		sig = Pan2.ar(sig, pan);
+	Out.ar(out, sig);
+	}).add;
+
+
+
 	SynthDef(\reverb, {
-		|mix=0.33, room=0.75, damp-0.8|
+		|mix=0.33, room=0.75, damp=0.8|
 		var sig, in;
 
 		in = In.ar(\in.ir(1), 2);
@@ -44,6 +85,16 @@ s.waitForBoot(
 
 
 )
+
+(
+Synth(\blip_2, [
+	\dur, \3,
+	\atk, Pxrand([0.5, 1, 1.5], inf),
+	\rel, Pxrand([2, 3, 0.5], inf),
+	\freq, Pxrand((Scale.minor.degrees+52).midicps,1),
+	// \amp, 0.8,
+]
+);
 )
 ~b_fx = Bus.audio(s, 2);
 

@@ -35,14 +35,13 @@ SynthDef(\bpfsaw, {
 
 	sig = BLowShelf.ar(sig, lsf, 0.5, ldb);
 
-	sig = Saw.ar(
-
 	sig = Balance2.ar(sig[0], sig[1], pan);
 
 	sig = sig * env * amp;
 
 	Out.ar(out, sig);
 }).add;
+
 
 SynthDef(\woosh, {
 	arg freq = 500, amp = 0.6, out = 0, pha = 0,
